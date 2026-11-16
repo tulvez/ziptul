@@ -180,8 +180,8 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 !define MUI_LANGDLL_REGISTRY_VALUENAME "Installer Language"
 
 ; ── ZIPTUL: Tulvez Noir koyu sihirbaz ─────────────────────────────────────
-!define TV_ZEMIN "0D0D0F"
-!define TV_KART "1A1A1D"
+!define TV_ZEMIN "181818" ; tulvez.com bileşen rengi
+!define TV_KART "232323"
 !define TV_YAZI "FFFFFF"
 !define TV_SOLUK "8C8C92"
 !define MUI_BGCOLOR "${TV_ZEMIN}"
@@ -190,7 +190,6 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 !define MUI_INSTFILESPAGE_COLORS "${TV_YAZI} ${TV_ZEMIN}"
 !define MUI_INSTFILESPAGE_PROGRESSBAR "smooth"
 !define MUI_LICENSEPAGE_BGCOLOR "${TV_KART}"
-!define MUI_WELCOMEFINISHPAGE_BITMAP_NOSTRETCH
 
 ; Bir pencerenin çocuklarını Noir'a boyar. Sınıfa göre:
 ;   Button (basma)       → Windows koyu çizimi (DarkMode_Explorer)
@@ -215,6 +214,9 @@ Function ${UN}TvBoya ; yığın: pencere
       IntOp $3 $3 & 0xF
       ${If} $3 = 0
       ${OrIf} $3 = 1
+        ; Koyu düğme: önce pencereye koyu kip izni (uxtheme #133 AllowDarkModeForWindow),
+        ; yoksa Windows zemini koyu ama YAZIYI SİYAH çizer (sahibin Windows denemesi).
+        System::Call 'uxtheme::#133(p r1, i 1)'
         System::Call 'uxtheme::SetWindowTheme(p r1, w "DarkMode_Explorer", p 0)'
       ${Else}
         System::Call 'uxtheme::SetWindowTheme(p r1, w " ", w " ")'
@@ -224,13 +226,13 @@ Function ${UN}TvBoya ; yığın: pencere
       SetCtlColors $1 ${TV_YAZI} ${TV_KART}
     ${ElseIf} $2 == "SysListView32"
       System::Call 'uxtheme::SetWindowTheme(p r1, w "DarkMode_Explorer", p 0)'
-      SendMessage $1 0x1001 0 0x0F0D0D ; LVM_SETBKCOLOR (BGR)
-      SendMessage $1 0x1026 0 0x0F0D0D ; LVM_SETTEXTBKCOLOR
+      SendMessage $1 0x1001 0 0x181818 ; LVM_SETBKCOLOR (BGR)
+      SendMessage $1 0x1026 0 0x181818 ; LVM_SETTEXTBKCOLOR
       SendMessage $1 0x1024 0 0xFFFFFF ; LVM_SETTEXTCOLOR
     ${ElseIf} $2 == "msctls_progress32"
       System::Call 'uxtheme::SetWindowTheme(p r1, w " ", w " ")'
       SendMessage $1 0x0409 0 0xFFFFFF ; PBM_SETBARCOLOR (BGR)
-      SendMessage $1 0x2001 0 0x1D1A1A ; PBM_SETBKCOLOR
+      SendMessage $1 0x2001 0 0x232323 ; PBM_SETBKCOLOR
     ${ElseIf} $2 != "#32770"
       SetCtlColors $1 ${TV_YAZI} ${TV_ZEMIN}
     ${EndIf}
@@ -246,6 +248,9 @@ FunctionEnd
 Function ${UN}TvKoyu
   Push $0
   Push $1
+  ; Uygulamanın koyu kip tercihi (uxtheme #135 SetPreferredAppMode: 2 = ForceDark).
+  ; Windows 10 1809 öncesinde bu sıra numarası yoktur; System eklentisi çağırmadan geçer.
+  System::Call 'uxtheme::#135(i 2)'
   ; Koyu başlık çubuğu: DWMWA_USE_IMMERSIVE_DARK_MODE (20; eski Windows 10'da 19)
   System::Call '*(i 1) p .r1'
   System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, p r1, i 4) i .r0'
