@@ -23,7 +23,7 @@ env:
 
 jobs:
   windows:
-    name: Windows (NSIS, Noir sihirbaz)
+    name: Windows (NSIS)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +37,13 @@ jobs:
       - run: npm ci
       - name: Derle (Tauri + NSIS)
         run: npm run tauri build -- --bundles nsis
+      - name: Denetle (sağ tık kancası ve standart sihirbaz kurulumda mı)
+        shell: bash
+        run: |
+          f=src-tauri/target/release/nsis/x64/installer.nsi
+          grep -q 'ZiptulZip' "$f" || grep -rq 'ZiptulZip' src-tauri/target/release/nsis/x64/ || { echo "sağ tık kancası kurulumda YOK"; exit 1; }
+          ! grep -q 'TvKoyu' "$f" || { echo "koyu tema kodu hâlâ şablonda"; exit 1; }
+          echo "kanca var, koyu tema yok"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
