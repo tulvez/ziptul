@@ -37,13 +37,24 @@ jobs:
       - run: npm ci
       - name: Derle (Tauri + NSIS)
         run: npm run tauri build -- --bundles nsis
-      - name: Denetle (sağ tık kancası ve standart sihirbaz kurulumda mı)
-        shell: bash
+      - name: Denetle (kurulumu gerçekten kur, sağ tık kayıtlarına bak)
+        shell: pwsh
         run: |
-          f=src-tauri/target/release/nsis/x64/installer.nsi
-          grep -q 'ZiptulZip' "$f" || grep -rq 'ZiptulZip' src-tauri/target/release/nsis/x64/ || { echo "sağ tık kancası kurulumda YOK"; exit 1; }
-          ! grep -q 'TvKoyu' "$f" || { echo "koyu tema kodu hâlâ şablonda"; exit 1; }
-          echo "kanca var, koyu tema yok"
+          $nsi = "src-tauri/target/release/nsis/x64/installer.nsi"
+          if (Select-String -Path $nsi -Pattern 'TvKoyu' -Quiet) { throw "koyu tema kodu hala sablonda" }
+          $kur = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $kur.FullName -ArgumentList '/S' -Wait
+          $anahtarlar = @(
+            'HKCU:\Software\Classes\SystemFileAssociations\.zip\shell\ZiptulAc\command',
+            'HKCU:\Software\Classes\SystemFileAssociations\.zip\shell\ZiptulCikar\command',
+            'HKCU:\Software\Classes\*\shell\ZiptulZip\command',
+            'HKCU:\Software\Classes\Directory\shell\ZiptulZip\command'
+          )
+          foreach ($k in $anahtarlar) {
+            $d = (Get-ItemProperty -LiteralPath $k -ErrorAction Stop).'(default)'
+            Write-Output "$k -> $d"
+          }
+          Write-Output "sag tik kayitlari kurulumla yaziliyor, koyu tema yok"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
