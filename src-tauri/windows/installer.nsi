@@ -10,9 +10,8 @@ ManifestDPIAwareness PerMonitorV2
   SetCompress off
 !else
   ; TULVEZ / ZIPTUL: Bu dosya Tauri CLI 2.12.1'in NSIS şablonunun kopyasıdır (Tulvez Browser'daki
-; kopyadan alındı). Ziptul farkları "ZIPTUL:" ile işaretli — bütün sihirbaz Tulvez Noir koyu:
-;   MUI_BGCOLOR/MUI_TEXTCOLOR + her sayfanın SHOW anında TvKoyu (zemin, yazı, koyu düğme,
-;   koyu başlık çubuğu, koyu liste ve ilerleme çubuğu). Çizim Windows'ta denetlenmeli.
+; kopyadan alındı). Ziptul farkları "ZIPTUL:" ile işaretli. Görünüm standart Windows sihirbazı
+;   (koyu tema yok); sağ tık menüsü kayıtları windows/hooks.nsh'te.
 ; Tauri CLI sürümü package.json'da 2.12.1'e SABİT; yükseltilirse şablon yeniden alınmalı.
 ; TULVEZ: Bu dosya Tauri CLI 2.12.1'in NSIS şablonunun kopyasıdır
 ; (crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi, etiket tauri-cli-v2.12.1).
@@ -179,115 +178,14 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 !define MUI_LANGDLL_REGISTRY_KEY "${MANUPRODUCTKEY}"
 !define MUI_LANGDLL_REGISTRY_VALUENAME "Installer Language"
 
-; ── ZIPTUL: Tulvez Noir koyu sihirbaz ─────────────────────────────────────
-!define TV_ZEMIN "181818" ; tulvez.com bileşen rengi
-!define TV_KART "232323"
-!define TV_YAZI "FFFFFF"
-!define TV_SOLUK "8C8C92"
-!define MUI_BGCOLOR "${TV_ZEMIN}"
-!define MUI_TEXTCOLOR "${TV_YAZI}"
-!define MUI_HEADER_TRANSPARENT_TEXT
-!define MUI_INSTFILESPAGE_COLORS "${TV_YAZI} ${TV_ZEMIN}"
-!define MUI_INSTFILESPAGE_PROGRESSBAR "smooth"
-!define MUI_LICENSEPAGE_BGCOLOR "${TV_KART}"
-
-; Bir pencerenin çocuklarını Noir'a boyar. Sınıfa göre:
-;   Button (basma)       → Windows koyu çizimi (DarkMode_Explorer)
-;   Button (onay/seçim)  → tema kapalı (yazı rengi ancak böyle uygulanır) + beyaz yazı
-;   Edit                 → kart rengi zemin
-;   SysListView32        → koyu liste (kurulum ayrıntıları)
-;   msctls_progress32    → tema kapalı, beyaz çubuk, kart zemin
-;   diğerleri            → beyaz yazı, Noir zemin
-!macro TV_BOYA_TANIM UN EK
-Function ${UN}TvBoya ; yığın: pencere
-  Exch $0
-  Push $1
-  Push $2
-  Push $3
-  StrCpy $1 0
-  tv_dongu_${EK}:
-    FindWindow $1 "" "" $0 $1
-    StrCmp $1 0 tv_bitti_${EK}
-    System::Call 'user32::GetClassNameW(p r1, w .r2, i 256)'
-    ${If} $2 == "Button"
-      System::Call 'user32::GetWindowLongW(p r1, i -16) i .r3'
-      IntOp $3 $3 & 0xF
-      ${If} $3 = 0
-      ${OrIf} $3 = 1
-        ; Koyu düğme: önce pencereye koyu kip izni (uxtheme #133 AllowDarkModeForWindow),
-        ; yoksa Windows zemini koyu ama YAZIYI SİYAH çizer (sahibin Windows denemesi).
-        System::Call 'uxtheme::#133(p r1, i 1)'
-        System::Call 'uxtheme::SetWindowTheme(p r1, w "DarkMode_Explorer", p 0)'
-      ${Else}
-        System::Call 'uxtheme::SetWindowTheme(p r1, w " ", w " ")'
-        SetCtlColors $1 ${TV_YAZI} ${TV_ZEMIN}
-      ${EndIf}
-    ${ElseIf} $2 == "Edit"
-      SetCtlColors $1 ${TV_YAZI} ${TV_KART}
-    ${ElseIf} $2 == "SysListView32"
-      System::Call 'uxtheme::SetWindowTheme(p r1, w "DarkMode_Explorer", p 0)'
-      SendMessage $1 0x1001 0 0x181818 ; LVM_SETBKCOLOR (BGR)
-      SendMessage $1 0x1026 0 0x181818 ; LVM_SETTEXTBKCOLOR
-      SendMessage $1 0x1024 0 0xFFFFFF ; LVM_SETTEXTCOLOR
-    ${ElseIf} $2 == "msctls_progress32"
-      System::Call 'uxtheme::SetWindowTheme(p r1, w " ", w " ")'
-      SendMessage $1 0x0409 0 0xFFFFFF ; PBM_SETBARCOLOR (BGR)
-      SendMessage $1 0x2001 0 0x232323 ; PBM_SETBKCOLOR
-    ${ElseIf} $2 != "#32770"
-      SetCtlColors $1 ${TV_YAZI} ${TV_ZEMIN}
-    ${EndIf}
-    Goto tv_dongu_${EK}
-  tv_bitti_${EK}:
-  Pop $3
-  Pop $2
-  Pop $1
-  Pop $0
-FunctionEnd
-
-; Sayfa gösterilirken: dış pencere + iç sayfa + koyu başlık çubuğu
-Function ${UN}TvKoyu
-  Push $0
-  Push $1
-  ; Uygulamanın koyu kip tercihi (uxtheme #135 SetPreferredAppMode: 2 = ForceDark).
-  ; Windows 10 1809 öncesinde bu sıra numarası yoktur; System eklentisi çağırmadan geçer.
-  System::Call 'uxtheme::#135(i 2)'
-  ; Koyu başlık çubuğu: DWMWA_USE_IMMERSIVE_DARK_MODE (20; eski Windows 10'da 19)
-  System::Call '*(i 1) p .r1'
-  System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, p r1, i 4) i .r0'
-  ${If} $0 <> 0
-    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, p r1, i 4)'
-  ${EndIf}
-  System::Free $1
-  SetCtlColors $HWNDPARENT ${TV_YAZI} ${TV_ZEMIN}
-  Push $HWNDPARENT
-  Call ${UN}TvBoya
-  ; Alt köşedeki marka yazısı soluk
-  GetDlgItem $0 $HWNDPARENT 1028
-  SetCtlColors $0 ${TV_SOLUK} ${TV_ZEMIN}
-  ; İç sayfa
-  FindWindow $0 "#32770" "" $HWNDPARENT
-  ${If} $0 <> 0
-    SetCtlColors $0 ${TV_YAZI} ${TV_ZEMIN}
-    Push $0
-    Call ${UN}TvBoya
-  ${EndIf}
-  Pop $1
-  Pop $0
-FunctionEnd
-!macroend
-!insertmacro TV_BOYA_TANIM "" "k"
-!insertmacro TV_BOYA_TANIM "un." "u"
-
 ; Installer pages, must be ordered as they appear
 ; 1. Welcome Page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW TvKoyu ; ZIPTUL
 !insertmacro MUI_PAGE_WELCOME
 
 ; 2. License Page (if defined)
 !if "${LICENSE}" != ""
   !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-  !define MUI_PAGE_CUSTOMFUNCTION_SHOW TvKoyu ; ZIPTUL
   !insertmacro MUI_PAGE_LICENSE "${LICENSE}"
 !endif
 
@@ -412,7 +310,6 @@ Function PageReinstall
     ${EndIf}
 
     ${NSD_SetFocus} $R2
-    Call TvKoyu ; ZIPTUL
     nsDialogs::Show
   ${EndIf}
 FunctionEnd
@@ -518,7 +415,6 @@ FunctionEnd
 
 ; 5. Choose install directory page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW TvKoyu ; ZIPTUL
 !insertmacro MUI_PAGE_DIRECTORY
 
 ; 6. Start menu shortcut page
@@ -529,11 +425,9 @@ Var AppStartMenuFolder
 !else
   !define MUI_PAGE_CUSTOMFUNCTION_PRE Skip
 !endif
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW TvKoyu ; ZIPTUL
 !insertmacro MUI_PAGE_STARTMENU Application $AppStartMenuFolder
 
 ; 7. Installation page
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW TvKoyu ; ZIPTUL
 !insertmacro MUI_PAGE_INSTFILES
 
 ; 8. Finish page
@@ -549,7 +443,6 @@ Var AppStartMenuFolder
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION RunMainBinary
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW TvKoyu ; ZIPTUL
 !insertmacro MUI_PAGE_FINISH
 
 Function RunMainBinary
@@ -590,7 +483,6 @@ Function un.ConfirmShow ; Add add a `Delete app data` check box
   Pop $DeleteAppDataCheckbox
   SendMessage $HWNDPARENT ${WM_GETFONT} 0 0 $1
   SendMessage $DeleteAppDataCheckbox ${WM_SETFONT} $1 1
-  Call un.TvKoyu ; ZIPTUL: onay kutusu dahil koyu
 FunctionEnd
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.ConfirmLeave
 Function un.ConfirmLeave
@@ -600,7 +492,6 @@ FunctionEnd
 !insertmacro MUI_UNPAGE_CONFIRM
 
 ; 2. Uninstalling Page
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.TvKoyu ; ZIPTUL
 !insertmacro MUI_UNPAGE_INSTFILES
 
 ;Languages
