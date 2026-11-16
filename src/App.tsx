@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
@@ -96,12 +96,50 @@ export default function App() {
     }
   }, []);
 
-  // İlk açılışta komut satırı argümanından .zip yolunu al
+  /* Sağ tık menüsü / dosya ilişkilendirmesinden gelen işlem (src-tauri/src/commands/islem.rs).
+     Var olan komutlar kullanılır → ilerleme penceresi ve iptal aynen çalışır.
+     Hiçbir dosyanın üstüne yazılmaz: hedef doluysa "ad (2)" seçilir. */
+  const islemYap = async (i: { tur: string; yollar: string[] }) => {
+    const ad = (yol: string) => yol.replace(/.*[/\\]/, '');
+    try {
+      if (i.tur === 'ac') {
+        await loadArchive(i.yollar[0]);
+      } else if (i.tur === 'zip') {
+        const hedef = await invoke<string>('benzersiz_hedef', { kaynak: i.yollar[0], tur: 'zip' });
+        await invoke('create_zip', { output: hedef, paths: i.yollar, password: null });
+        await loadArchive(hedef);
+        showStatus(`${ad(hedef)} oluşturuldu.`);
+      } else if (i.tur === 'cikar') {
+        const zip = i.yollar[0];
+        const hedef = await invoke<string>('benzersiz_hedef', { kaynak: zip, tur: 'klasor' });
+        await invoke('extract_zip', { zipPath: zip, outputDir: hedef, password: null });
+        await loadArchive(zip);
+        showStatus(`"${ad(hedef)}" klasörüne çıkarıldı.`);
+        invoke('klasoru_goster', { yol: hedef }).catch(() => { /* gösterilemedi — önemli değil */ });
+      }
+    } catch (e: any) {
+      if (String(e) === 'İptal edildi') return;
+      const metin = String(e);
+      await showError(/password|şifre|encrypt/i.test(metin)
+        ? 'Bu arşiv parolalı. Ziptul ile açıp “Tümünü Çıkar” ile çıkarın.'
+        : metin);
+    }
+  };
+  const islemRef = useRef(islemYap);
+  islemRef.current = islemYap;
+
+  // Açılışta komut satırından gelen işlem
   useEffect(() => {
-    invoke<string | null>('take_pending_file').then(path => {
-      if (path) loadArchive(path);
+    invoke<{ tur: string; yollar: string[] } | null>('take_pending_islem').then(i => {
+      if (i) islemRef.current(i);
     });
-  }, [loadArchive]);
+  }, []);
+
+  // Ziptul açıkken gelen yeni komut (tek kopya: aynı pencereye iletilir)
+  useEffect(() => {
+    const unlisten = listen<{ tur: string; yollar: string[] }>('islem', e => islemRef.current(e.payload));
+    return () => { unlisten.then(fn => fn()); };
+  }, []);
 
   useEffect(() => {
     const unlisten = listen<ProgressEvt>('progress', e => {
@@ -131,13 +169,6 @@ export default function App() {
     return () => { unlisten?.(); };
   }, [loadArchive]);
 
-  // "open-file" event — file association (Ziptul ile Aç)
-  useEffect(() => {
-    const unlisten = listen<string>('open-file', e => {
-      loadArchive(e.payload);
-    });
-    return () => { unlisten.then(fn => fn()); };
-  }, [loadArchive]);
 
   // Güncelleme denetimi: ayar açıksa, en çok günde bir (src/guncelleme.ts)
   useEffect(() => {

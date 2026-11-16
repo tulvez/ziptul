@@ -36,6 +36,7 @@ Kurulum dosyaları her sürümde [Releases](https://github.com/tulvez/ziptul/rel
 - ZIP oluşturma, açma, çıkarma; klasörü tek adımda arşivleme
 - Arşiv içinde taşıma, kopyalama, yeniden adlandırma, silme ve klasör oluşturma
 - Sürükle-bırak, kes / kopyala / yapıştır, çoklu seçim
+- Gezgin sağ tık menüsü: **Ziptul ile zip'le**, **Ziptul ile çıkar** (arşiv adıyla bir klasöre), **Ziptul ile aç** — hiçbir dosyanın üstüne yazılmaz (Windows 11'de “Daha fazla seçenek göster” altında)
 - AES-256 ile parolalı arşiv; arşiv bütünlük testi
 - İşlem ilerlemesi ve iptal
 - Koyu, açık ve sistem teması (Tulvez Noir)

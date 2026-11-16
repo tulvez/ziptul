@@ -25,6 +25,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     added: [
       'Yeni ad: RuZip artık Ziptul — bir Tulvez açık kaynak projesi (github.com/tulvez/ziptul)',
       'Yeni ikon ve Noir koyu kurulum sihirbazı',
+      'Gezgin sağ tık menüsü: Ziptul ile zip’le, Ziptul ile çıkar, Ziptul ile aç (hiçbir dosyanın üstüne yazılmaz)',
       'Tulvez Noir teması: koyu, açık ve sistem teması (araç çubuğundan)',
       'Açılışta otomatik güncelleme denetimi kapatılabilir; en çok günde bir yapılır',
       'Arşivdeki program ya da betik dosyası çift tıklanınca önce uyarı gösterilir',

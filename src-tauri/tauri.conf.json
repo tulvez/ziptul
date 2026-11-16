@@ -56,7 +56,8 @@
         "installerIcon": "icons/icon.ico",
         "uninstallerIcon": "icons/icon.ico",
         "headerImage": "windows/kurulum-ust.bmp",
-        "sidebarImage": "windows/kurulum-yan.bmp"
+        "sidebarImage": "windows/kurulum-yan.bmp",
+        "installerHooks": "windows/hooks.nsh"
       }
     },
     "fileAssociations": [

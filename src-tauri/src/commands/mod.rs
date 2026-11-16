@@ -3,6 +3,7 @@ pub mod utils;
 pub mod archive_read;
 pub mod archive_write;
 pub mod archive_edit;
+pub mod islem;
 
 pub use types::*;
 pub use utils::{get_temp_dir, open_file, open_url, cancel_operation};

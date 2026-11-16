@@ -1,33 +1,35 @@
 mod commands;
 
 use commands::*;
+use commands::islem;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 use tauri::Emitter;
 
-struct PendingFile(Arc<Mutex<Option<String>>>);
+/// Açılışta komut satırından gelen işlem (sağ tık menüsü / dosya ilişkilendirmesi)
+struct BekleyenIslem(Arc<Mutex<Option<islem::Islem>>>);
 
 #[tauri::command]
-fn take_pending_file(state: tauri::State<'_, PendingFile>) -> Option<String> {
-    state.0.lock().unwrap().take()
+fn take_pending_islem(state: tauri::State<'_, BekleyenIslem>) -> Option<islem::Islem> {
+    state.0.lock().ok().and_then(|mut k| k.take())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let pending = Arc::new(Mutex::new(std::env::args().skip(1).find(|a| a.to_lowercase().ends_with(".zip"))));
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let bekleyen = Arc::new(Mutex::new(islem::coz(&args)));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // Ziptul açıkken gelen yeni komut: aynı pencereye "islem" olayı olarak iletilir
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            for arg in argv {
-                if arg.to_lowercase().ends_with(".zip") {
-                    let _ = app.emit("open-file", arg.clone());
-                }
+            if let Some(i) = islem::coz(argv.get(1..).unwrap_or_default()) {
+                let _ = app.emit("islem", i);
             }
         }))
-        .manage(PendingFile(pending))
+        .manage(BekleyenIslem(bekleyen))
         .manage(CancelFlag(Arc::new(AtomicBool::new(false))))
         .invoke_handler(tauri::generate_handler![
             list_zip,
@@ -45,7 +47,9 @@ pub fn run() {
             open_file,
             open_url,
             cancel_operation,
-            take_pending_file,
+            take_pending_islem,
+            islem::benzersiz_hedef,
+            islem::klasoru_goster,
         ])
         .run(tauri::generate_context!())
         .expect("Ziptul başlatılamadı");
