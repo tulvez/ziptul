@@ -1,0 +1,109 @@
+name: Sürüm
+
+# Ziptul sürümü: v* etiketi itilince (ya da elle) üç platform derlenir ve
+# GitHub'da TASLAK sürüm oluşturulur. Taslak elle gözden geçirilip yayımlanır;
+# iş akışı mevcut bir sürümü ya da etiketi asla silmez.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Sürüm etiketi (örn. v0.2.0)'
+        required: true
+        default: 'v0.2.0'
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  windows:
+    name: Windows (NSIS, Noir sihirbaz)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: x86_64-pc-windows-msvc
+      - run: npm ci
+      - name: Derle (Tauri + NSIS)
+        run: npm run tauri build -- --bundles nsis
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+
+  linux:
+    name: Linux (AppImage, deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Sistem bağımlılıkları
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: npm ci
+      - name: Derle (Tauri)
+        run: npm run tauri build -- --bundles appimage,deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+
+  macos:
+    name: macOS (dmg, Apple Silicon)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: npm ci
+      - name: Derle (Tauri)
+        run: npm run tauri build -- --bundles dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  surum:
+    name: Taslak sürüm
+    needs: [windows, linux, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Taslak sürüm oluştur
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Ziptul ${{ env.TAG }}
+          draft: true
+          generate_release_notes: true
+          files: artifacts/**/*
+          fail_on_unmatched_files: true

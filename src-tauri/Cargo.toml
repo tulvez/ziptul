@@ -1,0 +1,31 @@
+[package]
+name = "ziptul"
+version = "0.2.0"
+description = "Ziptul — Tulvez açık kaynak ZIP arşiv programı"
+authors = ["Tulvez"]
+license = "MIT"
+repository = "https://github.com/tulvez/ziptul"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "ziptul_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zip = { version = "2", features = ["deflate", "aes-crypto"] }
+walkdir = "2"
+chrono = "0.4"
+thiserror = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+

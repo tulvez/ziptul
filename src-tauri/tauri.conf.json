@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ziptul",
+  "version": "0.2.0",
+  "identifier": "com.tulvez.ziptul",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Ziptul",
+        "width": 1200,
+        "height": 700,
+        "minWidth": 1000,
+        "minHeight": 500,
+        "decorations": true,
+        "center": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://api.github.com; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'",
+      "freezePrototype": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis",
+      "appimage",
+      "deb",
+      "dmg"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "template": "windows/installer.nsi",
+        "languages": [
+          "Turkish"
+        ],
+        "customLanguageFiles": {
+          "Turkish": "windows/Turkish.nsh"
+        },
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "headerImage": "windows/kurulum-ust.bmp",
+        "sidebarImage": "windows/kurulum-yan.bmp"
+      }
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "zip"
+        ],
+        "name": "ZIP arşivi",
+        "description": "ZIP arşivi (Ziptul)",
+        "role": "Editor"
+      }
+    ],
+    "publisher": "Tulvez",
+    "copyright": "© 2026 Tulvez",
+    "shortDescription": "Tulvez açık kaynak ZIP arşiv programı"
+  },
+  "plugins": {},
+  "mainBinaryName": "Ziptul"
+}
